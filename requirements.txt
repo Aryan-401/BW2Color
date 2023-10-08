@@ -1,0 +1,8 @@
+torch
+streamlit
+numpy
+Pillow
+torchvision
+scikit-image
+requests
+pathlib
