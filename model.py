@@ -1,9 +1,11 @@
+import numpy as np
 import torch
 from torch import nn, optim
 from unet import Unet
 from descriminator import PatchDiscriminator
 from gan_loss import GANLoss
-from weight_management import init_weights, init_model
+from weight_management import init_model
+from skimage.color import lab2rgb
 
 
 class MainModel(nn.Module):
@@ -66,3 +68,32 @@ class MainModel(nn.Module):
         self.opt_G.zero_grad()
         self.backward_G()
         self.opt_G.step()
+
+    def lab_to_rgb(self, L, ab):
+        """
+        Takes a batch of images
+        """
+
+        L = (L + 1.) * 50.
+        ab = ab * 110.
+        Lab = torch.cat([L, ab], dim=1)
+        L2 = Lab.permute(0, 2, 3, 1).detach().cpu().numpy()
+        rgb_imgs = []
+        for img in L2:
+            if img.shape[2] == 2:
+                img = np.concatenate([img, np.zeros((256, 256, 1))], axis=2)
+            img_rgb = lab2rgb(img)
+            rgb_imgs.append(img_rgb)
+        return np.stack(rgb_imgs, axis=0)
+
+    def predict(self, PIL_image):
+        self.net_G.eval()
+        with torch.no_grad():
+            self.setup_input({'L': PIL_image, 'ab': torch.zeros_like(PIL_image)})
+            self.forward()
+        fake_color = self.fake_color.detach()
+        real_color = self.ab
+        L = self.L
+        fake_imgs = self.lab_to_rgb(L, fake_color)
+        real_imgs = self.lab_to_rgb(L, real_color)
+        return np.concatenate([real_imgs[0], fake_imgs[0]], axis=1)
