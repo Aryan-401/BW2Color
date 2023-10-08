@@ -72,10 +72,12 @@ uploaded_file = st.file_uploader("Choose a grayscale image...", type=["jpg", "jp
 
 if uploaded_file is not None:
     input_image = Image.open(uploaded_file).convert("L")  # Convert to grayscale
+    height, width = input_image.size
     transform = transforms.Compose([
         transforms.Resize((256, 256)),  # Resize to the model's expected input size
         transforms.ToTensor(),
     ])
     input_image = transform(input_image).unsqueeze(0)  # Add batch dimension
     colorized_image = generate_colorized_image(model, input_image)
+    colorized_image = Image.fromarray((colorized_image * 255).astype(np.uint8)).resize((height, width//2))
     st.image(colorized_image, caption="Colorized image", use_column_width=True)
